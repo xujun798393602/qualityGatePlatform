@@ -1,3 +1,6 @@
+# 自动统一换行符为 Linux 格式 LF
 * text=auto eol=lf
 *.{cmd,[cC][mM][dD]} text eol=crlf
 *.{bat,[bB][aA][tT]} text eol=crlf
+# 忽略 node_modules 所有换行符检查
+**/node_modules/** -text
