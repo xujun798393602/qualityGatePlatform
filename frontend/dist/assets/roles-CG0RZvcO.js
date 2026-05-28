@@ -1,1 +1,0 @@
-import{r}from"./index-qDJ_MEYd.js";function s(){return r.get("/v1/roles")}function n(){return r.get("/v1/roles/permissions")}function i(e){return r.post("/v1/roles",e)}function u(e,t){return r.put(`/v1/roles/${e}`,t)}function l(e){return r.delete(`/v1/roles/${e}`)}export{s as a,i as c,l as d,n as g,u};
