@@ -1,7 +1,6 @@
-import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router'
-import { useAuthStore } from '@/stores/auth'
+import { createRouter, createWebHistory } from 'vue-router'
 
-const routes: RouteRecordRaw[] = [
+const routes = [
   {
     path: '/login',
     name: 'Login',
@@ -87,12 +86,12 @@ const router = createRouter({
 
 // Navigation guard
 router.beforeEach((to, _from, next) => {
-  const authStore = useAuthStore()
+  const isAuthenticated = !!localStorage.getItem('accessToken')
   const requiresAuth = to.matched.some((record) => record.meta.requiresAuth !== false)
 
-  if (requiresAuth && !authStore.isAuthenticated()) {
+  if (requiresAuth && !isAuthenticated) {
     next('/login')
-  } else if (to.path === '/login' && authStore.isAuthenticated()) {
+  } else if (to.path === '/login' && isAuthenticated) {
     next('/')
   } else {
     next()
