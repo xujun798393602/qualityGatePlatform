@@ -1,0 +1,52 @@
+# Node
+node_modules/
+
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.so
+.venv
+venv/
+ENV/
+env/
+*.egg-info/
+build/
+.pytest_cache/
+
+# Environment (copy .env.example as template)
+.env
+
+# Database files
+*.db
+*.sqlite3
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker
+docker-compose.override.yml
+
+# SSL certificates
+nginx/ssl/*.pem
+nginx/ssl/*.key
+
+# Claude Code
+.claude/
+
+# Test reports
+htmlcov/
+.coverage
+coverage.xml

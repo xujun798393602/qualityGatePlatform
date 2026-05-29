@@ -1,0 +1,56 @@
+services:
+  # FastAPI Backend
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: qualitygate-backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@auto-test-postgres:5432/quality_gate
+      REDIS_URL: redis://auto-test-redis:6379/0
+      JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-in-production}
+      DEBUG: ${DEBUG:-false}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:3000,http://localhost:9000}
+    volumes:
+      - ./backend:/app
+    ports:
+      - "9000:8000"
+    networks:
+      - tdd-auto-platform_auto-test-net
+
+  # Celery Worker
+  celery-worker:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: qualitygate-celery-worker
+    restart: unless-stopped
+    command: celery -A app.core.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@auto-test-postgres:5432/quality_gate
+      REDIS_URL: redis://auto-test-redis:6379/0
+    volumes:
+      - ./backend:/app
+    networks:
+      - tdd-auto-platform_auto-test-net
+    depends_on:
+      - backend
+
+  # Frontend (Nginx serving Vue.js SPA)
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: qualitygate-frontend
+    restart: unless-stopped
+    ports:
+      - "3000:80"
+    networks:
+      - tdd-auto-platform_auto-test-net
+    depends_on:
+      - backend
+
+networks:
+  tdd-auto-platform_auto-test-net:
+    external: true
