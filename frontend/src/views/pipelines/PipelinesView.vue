@@ -13,7 +13,6 @@
 
       <el-table :data="pipelines" v-loading="loading" stripe>
         <el-table-column prop="name" label="流水线名称" width="180" />
-        <el-table-column prop="repo_name" label="关联仓库" width="150" />
         <el-table-column prop="branch" label="分支" width="120" />
         <el-table-column prop="trigger_type" label="触发方式" width="120">
           <template #default="{ row }">
@@ -27,27 +26,26 @@
             <el-tag :type="getStatusType(row.status)">{{ getStatusText(row.status) }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column label="阶段数" width="100">
+          <template #default="{ row }">
+            <el-tag>{{ row.stages?.length || 0 }} 个</el-tag>
+          </template>
+        </el-table-column>
         <el-table-column prop="last_run_at" label="最后运行" width="180" />
         <el-table-column label="操作" width="300" fixed="right">
           <template #default="{ row }">
             <el-button type="primary" link @click="showDialog(row)">
-              <el-icon><Edit /></el-icon>
-              编辑
+              <el-icon><Edit /></el-icon>编辑
             </el-button>
             <el-button type="success" link @click="handleRun(row)">
-              <el-icon><VideoPlay /></el-icon>
-              运行
+              <el-icon><VideoPlay /></el-icon>运行
             </el-button>
             <el-button type="info" link @click="showRuns(row)">
-              <el-icon><List /></el-icon>
-              历史
+              <el-icon><List /></el-icon>历史
             </el-button>
             <el-popconfirm title="确定删除该流水线吗？" @confirm="handleDelete(row.id)">
               <template #reference>
-                <el-button type="danger" link>
-                  <el-icon><Delete /></el-icon>
-                  删除
-                </el-button>
+                <el-button type="danger" link><el-icon><Delete /></el-icon>删除</el-button>
               </template>
             </el-popconfirm>
           </template>
@@ -55,61 +53,82 @@
       </el-table>
     </el-card>
 
-    <!-- Dialog -->
-    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑流水线' : '新增流水线'" width="700px">
+    <!-- 新增/编辑对话框 -->
+    <el-dialog v-model="dialogVisible" :title="isEdit ? '编辑流水线' : '新增流水线'" width="800px">
       <el-form ref="formRef" :model="form" :rules="rules" label-width="100px">
         <el-form-item label="流水线名称" prop="name">
           <el-input v-model="form.name" placeholder="请输入流水线名称" />
         </el-form-item>
         <el-form-item label="关联仓库" prop="repo_id">
-          <el-select v-model="form.repo_id" placeholder="请选择仓库">
+          <el-select v-model="form.repo_id" placeholder="请选择仓库" clearable>
             <el-option v-for="repo in repos" :key="repo.id" :label="repo.name" :value="repo.id" />
           </el-select>
         </el-form-item>
         <el-form-item label="分支" prop="branch">
           <el-input v-model="form.branch" placeholder="请输入分支" />
         </el-form-item>
-        <el-form-item label="触发方式" prop="trigger_type">
-          <el-radio-group v-model="form.trigger_type">
-            <el-radio value="manual">手动触发</el-radio>
-            <el-radio value="auto">自动触发</el-radio>
-          </el-radio-group>
-        </el-form-item>
         <el-form-item label="描述" prop="description">
           <el-input v-model="form.description" type="textarea" :rows="2" placeholder="请输入流水线描述" />
         </el-form-item>
-        <el-divider content-position="left">流水线阶段</el-divider>
-        <div v-for="(stage, index) in form.stages" :key="index" class="stage-item">
-          <el-row :gutter="10">
-            <el-col :span="8">
-              <el-input v-model="stage.name" placeholder="阶段名称" />
-            </el-col>
-            <el-col :span="8">
-              <el-select v-model="stage.script_id" placeholder="选择脚本">
-                <el-option v-for="script in scripts" :key="script.id" :label="script.name" :value="script.id" />
-              </el-select>
-            </el-col>
-            <el-col :span="4">
-              <el-input-number v-model="stage.order" :min="1" placeholder="顺序" />
-            </el-col>
-            <el-col :span="4">
-              <el-button type="danger" @click="removeStage(index)">删除</el-button>
-            </el-col>
-          </el-row>
+
+        <!-- 流水线阶段配置 -->
+        <el-divider content-position="left">
+          <div class="divider-title">
+            <span>流水线阶段</span>
+            <el-button type="primary" size="small" @click="addStage" class="add-stage-btn">
+              <el-icon><Plus /></el-icon>
+              添加阶段
+            </el-button>
+          </div>
+        </el-divider>
+
+        <div class="stages-container">
+          <div v-for="(stage, index) in form.stages" :key="index" class="stage-item">
+            <div class="stage-header">
+              <span class="stage-number">阶段 {{ index + 1 }}</span>
+              <el-button type="danger" size="small" @click="removeStage(index)" class="delete-stage-btn">
+                <el-icon><Delete /></el-icon>
+                删除
+              </el-button>
+            </div>
+            <el-row :gutter="15">
+              <el-col :span="8">
+                <el-form-item label="阶段名称" label-width="80px">
+                  <el-input v-model="stage.name" placeholder="如：构建、测试、部署" />
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="执行脚本" label-width="80px">
+                  <el-select v-model="stage.script_id" placeholder="选择脚本" clearable>
+                    <el-option v-for="script in scripts" :key="script.id" :label="script.name" :value="script.id" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+              <el-col :span="8">
+                <el-form-item label="触发方式" label-width="80px">
+                  <el-select v-model="stage.trigger_type" placeholder="选择触发方式">
+                    <el-option label="手动触发" value="manual" />
+                    <el-option label="自动触发" value="auto" />
+                    <el-option label="Webhook 触发" value="webhook" />
+                  </el-select>
+                </el-form-item>
+              </el-col>
+            </el-row>
+          </div>
+
+          <!-- 空状态提示 -->
+          <el-empty v-if="form.stages.length === 0" description="暂无阶段，请点击上方按钮添加" :image-size="60" />
         </div>
-        <el-button type="primary" @click="addStage" style="margin-top: 10px;">
-          <el-icon><Plus /></el-icon>
-          添加阶段
-        </el-button>
       </el-form>
+
       <template #footer>
         <el-button @click="dialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="submitting" @click="handleSubmit">确定</el-button>
       </template>
     </el-dialog>
 
-    <!-- Runs Dialog -->
-    <el-dialog v-model="runsDialogVisible" title="运行历史" width="800px">
+    <!-- 运行历史对话框 -->
+    <el-dialog v-model="runsDialogVisible" title="运行历史" width="900px">
       <el-table :data="pipelineRuns" v-loading="runsLoading" stripe>
         <el-table-column prop="id" label="运行ID" width="280" show-overflow-tooltip />
         <el-table-column prop="status" label="状态" width="120">
@@ -152,42 +171,35 @@ const form = reactive({
   branch: 'main',
   trigger_type: 'manual',
   description: '',
-  stages: [] as { name: string; script_id: string; order: number }[],
+  stages: [] as { name: string; script_id: string; order: number; trigger_type: string }[],
 })
 
 const rules: FormRules = {
   name: [{ required: true, message: '请输入流水线名称', trigger: 'blur' }],
-  repo_id: [{ required: true, message: '请选择仓库', trigger: 'change' }],
-  trigger_type: [{ required: true, message: '请选择触发方式', trigger: 'change' }],
-}
-
-function getStatusType(status: string) {
-  const map: Record<string, string> = {
-    success: 'success',
-    failed: 'danger',
-    running: 'warning',
-    pending: 'info',
-  }
-  return map[status] || 'info'
-}
-
-function getStatusText(status: string) {
-  const map: Record<string, string> = {
-    success: '成功',
-    failed: '失败',
-    running: '运行中',
-    pending: '等待中',
-  }
-  return map[status] || status
 }
 
 function addStage() {
-  form.stages.push({ name: '', script_id: '', order: form.stages.length + 1 })
+  form.stages.push({
+    name: '',
+    script_id: '',
+    order: form.stages.length + 1,
+    trigger_type: 'manual',
+  })
 }
 
 function removeStage(index: number) {
   form.stages.splice(index, 1)
   form.stages.forEach((stage, i) => { stage.order = i + 1 })
+}
+
+function getStatusType(status: string) {
+  const map: Record<string, string> = { success: 'success', failed: 'danger', running: 'warning', pending: 'info' }
+  return map[status] || 'info'
+}
+
+function getStatusText(status: string) {
+  const map: Record<string, string> = { success: '成功', failed: '失败', running: '运行中', pending: '等待中' }
+  return map[status] || status
 }
 
 async function loadData() {
@@ -213,11 +225,16 @@ function showDialog(pipeline?: Pipeline) {
     isEdit.value = true
     editId.value = pipeline.id
     form.name = pipeline.name
-    form.repo_id = pipeline.repo_id
+    form.repo_id = pipeline.repo_id || ''
     form.branch = pipeline.branch
     form.trigger_type = pipeline.trigger_type
     form.description = pipeline.description || ''
-    form.stages = pipeline.stages.map(s => ({ name: s.name, script_id: s.script_id || '', order: s.order }))
+    form.stages = (pipeline.stages || []).map(s => ({
+      name: s.name,
+      script_id: s.script_id || '',
+      order: s.order,
+      trigger_type: pipeline.trigger_type,
+    }))
   } else {
     isEdit.value = false
     editId.value = ''
@@ -298,10 +315,48 @@ onMounted(() => {
   justify-content: space-between;
   align-items: center;
 }
+
+/* 分隔线标题样式 */
+.divider-title {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.add-stage-btn {
+  margin-left: 10px;
+}
+
+/* 阶段容器 */
+.stages-container {
+  max-height: 400px;
+  overflow-y: auto;
+  padding: 10px 0;
+}
+
+/* 单个阶段样式 */
 .stage-item {
-  margin-bottom: 10px;
-  padding: 10px;
-  background: #f5f7fa;
-  border-radius: 4px;
+  background: #f8f9fa;
+  border: 1px solid #e9ecef;
+  border-radius: 8px;
+  padding: 15px;
+  margin-bottom: 15px;
+}
+
+.stage-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.stage-number {
+  font-weight: 600;
+  color: #409eff;
+  font-size: 14px;
+}
+
+.delete-stage-btn {
+  margin-left: auto;
 }
 </style>

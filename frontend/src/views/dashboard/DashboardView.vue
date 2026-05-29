@@ -1,19 +1,19 @@
 <template>
   <div class="dashboard">
-    <!-- Stats Cards -->
-    <el-row :gutter="20">
-      <el-col :span="4" v-for="stat in statsCards" :key="stat.title">
+    <!-- Stats Cards - 直接展示，无滚动条 -->
+    <div class="stats-grid">
+      <div class="stat-item" v-for="stat in statsCards" :key="stat.title">
         <el-card shadow="hover" class="stat-card">
-          <template #header>
-            <div class="card-header">
-              <span>{{ stat.title }}</span>
-              <el-icon :color="stat.color" :size="24"><component :is="stat.icon" /></el-icon>
+          <div class="stat-content">
+            <div class="stat-info">
+              <div class="stat-title">{{ stat.title }}</div>
+              <div class="stat-value" :style="{ color: stat.color }">{{ stat.value }}</div>
             </div>
-          </template>
-          <div class="stat-value" :style="{ color: stat.color }">{{ stat.value }}</div>
+            <el-icon :color="stat.color" :size="40"><component :is="stat.icon" /></el-icon>
+          </div>
         </el-card>
-      </el-col>
-    </el-row>
+      </div>
+    </div>
 
     <!-- Charts Row -->
     <el-row :gutter="20" class="mt-20">
@@ -52,9 +52,7 @@
             <el-table-column prop="pipeline_name" label="流水线" />
             <el-table-column prop="status" label="状态">
               <template #default="{ row }">
-                <el-tag :type="getStatusType(row.status)" size="small">
-                  {{ getStatusText(row.status) }}
-                </el-tag>
+                <el-tag :type="getStatusType(row.status)" size="small">{{ getStatusText(row.status) }}</el-tag>
               </template>
             </el-table-column>
             <el-table-column prop="trigger_type" label="触发方式">
@@ -65,9 +63,7 @@
               </template>
             </el-table-column>
             <el-table-column prop="started_at" label="开始时间" width="180">
-              <template #default="{ row }">
-                {{ row.started_at ? new Date(row.started_at).toLocaleString() : '-' }}
-              </template>
+              <template #default="{ row }">{{ row.started_at ? new Date(row.started_at).toLocaleString() : '-' }}</template>
             </el-table-column>
           </el-table>
         </el-card>
@@ -78,18 +74,13 @@
     <el-row :gutter="20" class="mt-20">
       <el-col :span="12">
         <el-card>
-          <template #header>
-            <span>GitLab 集成说明</span>
-          </template>
+          <template #header><span>GitLab 集成说明</span></template>
           <el-descriptions :column="1" border size="small">
             <el-descriptions-item label="Webhook URL">
               <el-tag type="info">http://your-domain/api/v1/webhooks/gitlab/{repo_id}</el-tag>
             </el-descriptions-item>
             <el-descriptions-item label="支持事件">
-              <el-space>
-                <el-tag>Pipeline Hook</el-tag>
-                <el-tag>Merge Request Hook</el-tag>
-              </el-space>
+              <el-space><el-tag>Pipeline Hook</el-tag><el-tag>Merge Request Hook</el-tag></el-space>
             </el-descriptions-item>
             <el-descriptions-item label="配置步骤">
               <ol style="margin: 0; padding-left: 20px;">
@@ -104,9 +95,7 @@
       </el-col>
       <el-col :span="12">
         <el-card>
-          <template #header>
-            <span>系统信息</span>
-          </template>
+          <template #header><span>系统信息</span></template>
           <el-descriptions :column="1" border size="small">
             <el-descriptions-item label="系统名称">代码质量门禁管理平台</el-descriptions-item>
             <el-descriptions-item label="版本">0.1.0</el-descriptions-item>
@@ -128,12 +117,7 @@ import VChart from 'vue-echarts'
 import { use } from 'echarts/core'
 import { CanvasRenderer } from 'echarts/renderers'
 import { LineChart, PieChart } from 'echarts/charts'
-import {
-  TitleComponent,
-  TooltipComponent,
-  LegendComponent,
-  GridComponent,
-} from 'echarts/components'
+import { TitleComponent, TooltipComponent, LegendComponent, GridComponent } from 'echarts/components'
 import { dashboardApi, type DashboardStats, type PipelineTrend, type GatePassRate, type RecentPipeline } from '@/api/dashboard'
 
 use([CanvasRenderer, LineChart, PieChart, TitleComponent, TooltipComponent, LegendComponent, GridComponent])
@@ -172,9 +156,7 @@ const gatePassRateOption = computed(() => ({
   tooltip: { trigger: 'item', formatter: '{b}: {c} ({d}%)' },
   legend: { orient: 'vertical', left: 'left' },
   series: [{
-    name: '门禁通过率',
-    type: 'pie',
-    radius: ['40%', '70%'],
+    name: '门禁通过率', type: 'pie', radius: ['40%', '70%'],
     avoidLabelOverlap: false,
     itemStyle: { borderRadius: 10, borderColor: '#fff', borderWidth: 2 },
     label: { show: false, position: 'center' },
@@ -191,46 +173,22 @@ function getStatusType(status: string) {
   const map: Record<string, string> = { success: 'success', failed: 'danger', running: 'warning', pending: 'info' }
   return map[status] || 'info'
 }
-
 function getStatusText(status: string) {
   const map: Record<string, string> = { success: '成功', failed: '失败', running: '运行中', pending: '等待中' }
   return map[status] || status
 }
 
 async function loadStats() {
-  try {
-    const { data } = await dashboardApi.getStats()
-    stats.value = data
-  } catch (error) {
-    console.error('Failed to load stats:', error)
-  }
+  try { const { data } = await dashboardApi.getStats(); stats.value = data } catch (e) { console.error(e) }
 }
-
 async function loadPipelineTrend() {
-  try {
-    const { data } = await dashboardApi.getPipelineTrend(trendPeriod.value)
-    pipelineTrend.value = data
-  } catch (error) {
-    console.error('Failed to load pipeline trend:', error)
-  }
+  try { const { data } = await dashboardApi.getPipelineTrend(trendPeriod.value); pipelineTrend.value = data } catch (e) { console.error(e) }
 }
-
 async function loadGatePassRate() {
-  try {
-    const { data } = await dashboardApi.getGatePassRate()
-    gatePassRate.value = data
-  } catch (error) {
-    console.error('Failed to load gate pass rate:', error)
-  }
+  try { const { data } = await dashboardApi.getGatePassRate(); gatePassRate.value = data } catch (e) { console.error(e) }
 }
-
 async function loadRecentPipelines() {
-  try {
-    const { data } = await dashboardApi.getRecentPipelines()
-    recentPipelines.value = data
-  } catch (error) {
-    console.error('Failed to load recent pipelines:', error)
-  }
+  try { const { data } = await dashboardApi.getRecentPipelines(); recentPipelines.value = data } catch (e) { console.error(e) }
 }
 
 onMounted(() => {
@@ -243,9 +201,51 @@ onMounted(() => {
 
 <style scoped>
 .dashboard { padding: 0; }
-.stat-card { height: 140px; }
-.card-header { display: flex; justify-content: space-between; align-items: center; }
-.stat-value { font-size: 28px; font-weight: bold; text-align: center; margin-top: 15px; }
-.mt-20 { margin-top: 20px; }
-.chart { height: 300px; }
+
+/* 统计卡片网格布局 - 直接展示，无滚动条 */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 20px;
+}
+
+.stat-card {
+  height: 120px;
+}
+
+.stat-content {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  height: 100%;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-title {
+  font-size: 14px;
+  color: #909399;
+  margin-bottom: 10px;
+}
+
+.stat-value {
+  font-size: 32px;
+  font-weight: bold;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.mt-20 {
+  margin-top: 20px;
+}
+
+.chart {
+  height: 300px;
+}
 </style>
