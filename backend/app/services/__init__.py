@@ -1,1 +1,1 @@
-"""Module: __init__"""
+"""Services package"""
