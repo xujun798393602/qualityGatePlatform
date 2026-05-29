@@ -1,22 +1,16 @@
-import axios, { type AxiosInstance, type AxiosResponse, type InternalAxiosRequestConfig } from 'axios'
-import { ElMessage } from 'element-plus'
-import { useAuthStore } from '@/stores/auth'
-import router from '@/router'
+import axios from 'axios'
 
-const service: AxiosInstance = axios.create({
+const service = axios.create({
   baseURL: '/api',
   timeout: 15000,
-  headers: {
-    'Content-Type': 'application/json',
-  },
 })
 
 // Request interceptor
 service.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
-    const authStore = useAuthStore()
-    if (authStore.accessToken) {
-      config.headers.Authorization = `Bearer ${authStore.accessToken}`
+  (config) => {
+    const token = localStorage.getItem('accessToken')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },
@@ -27,39 +21,45 @@ service.interceptors.request.use(
 
 // Response interceptor
 service.interceptors.response.use(
-  (response: AxiosResponse) => {
+  (response) => {
     return response
   },
   async (error) => {
     const originalRequest = error.config
-    const authStore = useAuthStore()
+
+    // Skip token refresh for login and refresh endpoints
+    if (originalRequest.url?.includes('/auth/')) {
+      return Promise.reject(error)
+    }
 
     // If 401 and not already retrying
     if (error.response?.status === 401 && !originalRequest._retry) {
       originalRequest._retry = true
 
-      // Try to refresh token
-      if (authStore.refreshToken) {
+      const refreshToken = localStorage.getItem('refreshToken')
+      if (refreshToken) {
         try {
-          await authStore.refreshAccessToken()
-          originalRequest.headers.Authorization = `Bearer ${authStore.accessToken}`
+          const { data } = await axios.post('/api/v1/auth/refresh', {
+            refresh_token: refreshToken,
+          })
+
+          localStorage.setItem('accessToken', data.access_token)
+          localStorage.setItem('refreshToken', data.refresh_token)
+
+          originalRequest.headers.Authorization = `Bearer ${data.access_token}`
           return service(originalRequest)
         } catch (refreshError) {
-          // Refresh failed, logout
-          authStore.logout()
-          router.push('/login')
+          localStorage.removeItem('accessToken')
+          localStorage.removeItem('refreshToken')
+          window.location.href = '/login'
           return Promise.reject(refreshError)
         }
       } else {
-        // No refresh token, logout
-        authStore.logout()
-        router.push('/login')
+        localStorage.removeItem('accessToken')
+        localStorage.removeItem('refreshToken')
+        window.location.href = '/login'
       }
     }
-
-    // Show error message
-    const message = error.response?.data?.detail || error.message || '请求失败'
-    ElMessage.error(message)
 
     return Promise.reject(error)
   }

@@ -2,7 +2,9 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from contextlib import asynccontextmanager
 from app.core.config import get_settings
-from app.core.database import engine, Base
+from app.core.database import engine
+from app.models.base import Base
+from app.models import *  # Import all models to register with Base
 from app.api.v1.router import api_router
 
 settings = get_settings()
@@ -27,6 +29,7 @@ app = FastAPI(
     docs_url="/docs",
     redoc_url="/redoc",
     lifespan=lifespan,
+    redirect_slashes=False,
 )
 
 app.add_middleware(

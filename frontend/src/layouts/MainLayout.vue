@@ -19,24 +19,6 @@
           <el-icon><Dashboard /></el-icon>
           <template #title>仪表盘</template>
         </el-menu-item>
-        <el-sub-menu index="management">
-          <template #title>
-            <el-icon><Management /></el-icon>
-            <span>系统管理</span>
-          </template>
-          <el-menu-item index="/users">
-            <el-icon><User /></el-icon>
-            <template #title>用户管理</template>
-          </el-menu-item>
-          <el-menu-item index="/roles">
-            <el-icon><UserFilled /></el-icon>
-            <template #title>角色管理</template>
-          </el-menu-item>
-          <el-menu-item index="/teams">
-            <el-icon><Team /></el-icon>
-            <template #title>团队管理</template>
-          </el-menu-item>
-        </el-sub-menu>
         <el-sub-menu index="quality">
           <template #title>
             <el-icon><Operation /></el-icon>
@@ -59,10 +41,28 @@
             <template #title>门禁管理</template>
           </el-menu-item>
         </el-sub-menu>
-        <el-menu-item index="/system">
-          <el-icon><Setting /></el-icon>
-          <template #title>系统配置</template>
-        </el-menu-item>
+        <el-sub-menu index="management">
+          <template #title>
+            <el-icon><Management /></el-icon>
+            <span>系统管理</span>
+          </template>
+          <el-menu-item index="/users">
+            <el-icon><User /></el-icon>
+            <template #title>用户管理</template>
+          </el-menu-item>
+          <el-menu-item index="/roles">
+            <el-icon><UserFilled /></el-icon>
+            <template #title>角色管理</template>
+          </el-menu-item>
+          <el-menu-item index="/teams">
+            <el-icon><Team /></el-icon>
+            <template #title>团队管理</template>
+          </el-menu-item>
+          <el-menu-item index="/system">
+            <el-icon><Setting /></el-icon>
+            <template #title>系统配置</template>
+          </el-menu-item>
+        </el-sub-menu>
       </el-menu>
     </el-aside>
 
