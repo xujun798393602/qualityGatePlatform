@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>代码质量门禁管理平台</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f7fa; }
+        .login-container { display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .login-box { background: white; padding: 40px; border-radius: 8px; box-shadow: 0 2px 12px rgba(0,0,0,0.1); width: 400px; }
+        .login-title { text-align: center; margin-bottom: 30px; color: #303133; font-size: 24px; }
+        .form-group { margin-bottom: 20px; }
+        .form-group label { display: block; margin-bottom: 8px; color: #606266; font-size: 14px; }
+        .form-group input { width: 100%; padding: 10px 12px; border: 1px solid #dcdfe6; border-radius: 4px; font-size: 14px; }
+        .form-group input:focus { outline: none; border-color: #409eff; }
+        .login-btn { width: 100%; padding: 12px; background: #409eff; color: white; border: none; border-radius: 4px; font-size: 16px; cursor: pointer; }
+        .login-btn:hover { background: #66b1ff; }
+        .login-btn:disabled { background: #a0cfff; cursor: not-allowed; }
+        .error-msg { color: #f56c6c; font-size: 14px; margin-top: 10px; text-align: center; }
+        .dashboard { display: none; padding: 20px; }
+        .header { background: white; padding: 15px 20px; box-shadow: 0 1px 4px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; }
+        .header h1 { color: #303133; font-size: 18px; }
+        .logout-btn { padding: 8px 16px; background: #909399; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        .logout-btn:hover { background: #a6a9ad; }
+        .content { padding: 20px; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); }
+        .card h3 { color: #303133; margin-bottom: 15px; }
+        .stat { font-size: 32px; color: #409eff; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="app">
+        <div class="login-container" id="loginView">
+            <div class="login-box">
+                <h2 class="login-title">代码质量门禁管理平台</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label>用户名</label>
+                        <input type="text" id="username" name="username" required placeholder="请输入用户名">
+                    </div>
+                    <div class="form-group">
+                        <label>密码</label>
+                        <input type="password" id="password" name="password" required placeholder="请输入密码">
+                    </div>
+                    <button type="submit" class="login-btn">登录</button>
+                </form>
+                <div id="errorMsg" class="error-msg" style="display: none;"></div>
+            </div>
+        </div>
+        <div class="dashboard" id="dashboardView">
+            <div class="header">
+                <h1>代码质量门禁管理平台</h1>
+                <button class="logout-btn" onclick="logout()">退出登录</button>
+            </div>
+            <div class="content">
+                <div class="card">
+                    <h3>系统状态</h3>
+                    <p>API 状态: <span id="apiStatus" style="color: #67c23a;">检查中...</span></p>
+                    <p>API 版本: <span id="apiVersion">-</span></p>
+                </div>
+                <div class="card">
+                    <h3>快速开始</h3>
+                    <p>欢迎使用代码质量门禁管理平台！</p>
+                    <p>API 文档: <a href="/docs" target="_blank">/docs</a></p>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        const API_BASE = window.location.origin;
+        let accessToken = localStorage.getItem('accessToken');
+        let refreshToken = localStorage.getItem('refreshToken');
+
+        // Check API health
+        async function checkHealth() {
+            try {
+                const response = await fetch(`${API_BASE}/health`);
+                const data = await response.json();
+                document.getElementById('apiStatus').textContent = '正常';
+                document.getElementById('apiVersion').textContent = data.version || '-';
+            } catch (error) {
+                document.getElementById('apiStatus').textContent = '异常';
+                document.getElementById('apiStatus').style.color = '#f56c6c';
+            }
+        }
+
+        // Login
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const username = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorDiv = document.getElementById('errorMsg');
+            const btn = document.querySelector('.login-btn');
+
+            btn.disabled = true;
+            btn.textContent = '登录中...';
+            errorDiv.style.display = 'none';
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('username', username);
+                formData.append('password', password);
+
+                const response = await fetch(`${API_BASE}/api/v1/auth/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: formData
+                });
+
+                if (response.ok) {
+                    const data = await response.json();
+                    accessToken = data.access_token;
+                    refreshToken = data.refresh_token;
+                    localStorage.setItem('accessToken', accessToken);
+                    localStorage.setItem('refreshToken', refreshToken);
+                    showDashboard();
+                } else {
+                    const data = await response.json();
+                    errorDiv.textContent = data.detail || '登录失败';
+                    errorDiv.style.display = 'block';
+                }
+            } catch (error) {
+                errorDiv.textContent = '网络错误，请检查API服务是否启动';
+                errorDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '登录';
+            }
+        });
+
+        // Show dashboard
+        function showDashboard() {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'block';
+            checkHealth();
+        }
+
+        // Logout
+        function logout() {
+            accessToken = null;
+            refreshToken = null;
+            localStorage.removeItem('accessToken');
+            localStorage.removeItem('refreshToken');
+            document.getElementById('loginView').style.display = 'flex';
+            document.getElementById('dashboardView').style.display = 'none';
+        }
+
+        // Check if already logged in
+        if (accessToken) {
+            showDashboard();
+        }
+    </script>
+</body>
+</html>

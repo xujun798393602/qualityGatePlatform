@@ -1,42 +1,4 @@
-version: '3.8'
-
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15-alpine
-    container_name: qualitygate-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_DB: quality_gate
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    ports:
-      - "5432:5432"
-    networks:
-      - qualitygate-network
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
-  # Redis (for Celery and caching)
-  redis:
-    image: redis:7-alpine
-    container_name: qualitygate-redis
-    restart: unless-stopped
-    ports:
-      - "6379:6379"
-    networks:
-      - qualitygate-network
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-
   # FastAPI Backend
   backend:
     build:
@@ -45,22 +7,17 @@ services:
     container_name: qualitygate-backend
     restart: unless-stopped
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/quality_gate
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@auto-test-postgres:5432/quality_gate
+      REDIS_URL: redis://auto-test-redis:6379/0
       JWT_SECRET_KEY: ${JWT_SECRET_KEY:-your-secret-key-change-in-production}
       DEBUG: ${DEBUG:-false}
-      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:80}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost,http://localhost:3000,http://localhost:9000}
     volumes:
       - ./backend:/app
     ports:
-      - "8000:8000"
+      - "9000:8000"
     networks:
-      - qualitygate-network
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
+      - tdd-auto-platform_auto-test-net
 
   # Celery Worker
   celery-worker:
@@ -71,17 +28,14 @@ services:
     restart: unless-stopped
     command: celery -A app.core.celery_app worker --loglevel=info
     environment:
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@postgres:5432/quality_gate
-      REDIS_URL: redis://redis:6379/0
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-postgres}@auto-test-postgres:5432/quality_gate
+      REDIS_URL: redis://auto-test-redis:6379/0
     volumes:
       - ./backend:/app
     networks:
-      - qualitygate-network
+      - tdd-auto-platform_auto-test-net
     depends_on:
-      backend:
-        condition: service_started
-      redis:
-        condition: service_healthy
+      - backend
 
   # Frontend (Nginx serving Vue.js SPA)
   frontend:
@@ -93,30 +47,10 @@ services:
     ports:
       - "3000:80"
     networks:
-      - qualitygate-network
+      - tdd-auto-platform_auto-test-net
     depends_on:
       - backend
 
-  # Nginx Reverse Proxy (optional, for production SSL)
-  # nginx:
-  #   image: nginx:alpine
-  #   container_name: qualitygate-nginx
-  #   restart: unless-stopped
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-  #     - ./nginx/ssl:/etc/nginx/ssl:ro
-  #   networks:
-  #     - qualitygate-network
-  #   depends_on:
-  #     - frontend
-  #     - backend
-
-volumes:
-  postgres_data:
-
 networks:
-  qualitygate-network:
-    driver: bridge
+  tdd-auto-platform_auto-test-net:
+    external: true

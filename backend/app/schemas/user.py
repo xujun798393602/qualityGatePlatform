@@ -1,16 +1,26 @@
-import uuid
-from sqlalchemy import Column, String, Boolean, DateTime
-from sqlalchemy.sql import func
-from app.models.base import Base
+from typing import Optional
+from pydantic import BaseModel, EmailStr
 
-class User(Base):
-    __tablename__ = "users"
 
-    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
-    username = Column(String, unique=True, index=True, nullable=False)
-    email = Column(String, unique=True, index=True, nullable=False)
-    hashed_password = Column(String, nullable=False)
-    is_active = Column(Boolean, default=True)
-    is_superuser = Column(Boolean, default=False)
-    created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+class UserBase(BaseModel):
+    username: str
+    email: EmailStr
+
+
+class UserCreate(UserBase):
+    password: str
+
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    email: Optional[EmailStr] = None
+    is_active: Optional[bool] = None
+
+
+class UserResponse(UserBase):
+    id: str
+    name: str
+    is_active: bool
+
+    class Config:
+        from_attributes = True

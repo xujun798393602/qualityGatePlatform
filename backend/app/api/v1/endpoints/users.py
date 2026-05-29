@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.database import get_db
 from app.core.deps import get_current_active_user
@@ -8,13 +9,16 @@ from app.schemas.user import UserCreate, UserUpdate, UserResponse
 
 router = APIRouter()
 
+
 @router.get("/", response_model=List[UserResponse])
 async def get_users(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    users = await db.query(User).all()
+    result = await db.execute(select(User))
+    users = result.scalars().all()
     return users
+
 
 @router.get("/{user_id}", response_model=UserResponse)
 async def get_user(
@@ -22,10 +26,12 @@ async def get_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    user = await db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     return user
+
 
 @router.post("/", response_model=UserResponse)
 async def create_user(
@@ -33,20 +39,23 @@ async def create_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    existing = await db.query(User).filter(User.username == user_data.username).first()
+    result = await db.execute(select(User).where(User.username == user_data.username))
+    existing = result.scalars().first()
     if existing:
         raise HTTPException(status_code=400, detail="Username already registered")
     from app.core.security import get_password_hash
     user = User(
         username=user_data.username,
+        password_hash=get_password_hash(user_data.password),
+        name=user_data.username,
         email=user_data.email,
-        hashed_password=get_password_hash(user_data.password),
         is_active=True,
     )
     db.add(user)
     await db.commit()
     await db.refresh(user)
     return user
+
 
 @router.put("/{user_id}", response_model=UserResponse)
 async def update_user(
@@ -55,14 +64,16 @@ async def update_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    user = await db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    for field, value in user_data.dict(exclude_unset=True).items():
+    for field, value in user_data.model_dump(exclude_unset=True).items():
         setattr(user, field, value)
     await db.commit()
     await db.refresh(user)
     return user
+
 
 @router.delete("/{user_id}")
 async def delete_user(
@@ -70,7 +81,8 @@ async def delete_user(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    user = await db.query(User).filter(User.id == user_id).first()
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalars().first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
     await db.delete(user)
