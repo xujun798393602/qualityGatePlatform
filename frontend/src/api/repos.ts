@@ -7,6 +7,8 @@ export interface Repo {
   description?: string
   branch: string
   type: string
+  gitlab_project_id?: number
+  access_token?: string
   is_active: boolean
   last_sync_at?: string
   created_by?: string
@@ -20,6 +22,8 @@ export interface RepoCreate {
   description?: string
   branch?: string
   type: string
+  gitlab_project_id?: number
+  access_token?: string
 }
 
 export interface RepoUpdate {
@@ -28,6 +32,8 @@ export interface RepoUpdate {
   description?: string
   branch?: string
   type?: string
+  gitlab_project_id?: number
+  access_token?: string
   is_active?: boolean
 }
 
@@ -65,5 +71,15 @@ export const reposApi = {
   // Get repo branches
   getRepoBranches(repoId: string) {
     return request.get<string[]>(`/v1/repos/${repoId}/branches`)
+  },
+
+  // Search GitLab projects
+  getGitlabProjects(repoId: string, search: string = '') {
+    return request.get<{ id: number; name: string; path: string }[]>(`/v1/repos/${repoId}/gitlab-projects?search=${search}`)
+  },
+
+  // Get repo statistics
+  getRepoStatistics(repoId: string) {
+    return request.get<any>(`/v1/repos/${repoId}/statistics`)
   },
 }
